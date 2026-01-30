@@ -1,4 +1,4 @@
-🩺 Sistema de Inteligência Artificial para Identificação de Lesões por Pressão (LPP)
+🩺 Sistema de Inteligência Artificial para Identificação de Lesões por Pressão (LPP) (VERSION BETA)
 
 ⚠️ Aviso de Conteúdo Sensível
 Este projeto utiliza imagens reais de lesões por pressão, que podem ser consideradas fortes ou desconfortáveis para algumas pessoas.
