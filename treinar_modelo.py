@@ -1,77 +1,85 @@
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.keras.optimizers import Adam
 
-# Caminhos dos datasets
+# Caminhos
 treino_dir = "dataset/treino"
 validacao_dir = "dataset/validacao"
 
-# Data Augmentation para treino
+# Augmentation
 train_datagen = ImageDataGenerator(
     rescale=1./255,
-    rotation_range=30,       # Rotação aleatória
-    width_shift_range=0.1,   # Translação horizontal
-    height_shift_range=0.1,  # Translação vertical
-    shear_range=0.1,         # Corte angular
-    zoom_range=0.2,          # Zoom aleatório
-    horizontal_flip=True,    # Flip horizontal
-    brightness_range=[0.7,1.3], # Alteração de brilho
-    fill_mode='nearest'
+    rotation_range=25,
+    zoom_range=0.2,
+    width_shift_range=0.1,
+    height_shift_range=0.1,
+    horizontal_flip=True,
+    brightness_range=[0.8,1.2]
 )
 
-# Apenas normalização para validação
-val_datagen = ImageDataGenerator(rescale=1./255)
+val_datagen = ImageDataGenerator(
+    rescale=1./255
+)
 
-# Preparando os datasets
+# Dataset treino
 train_generator = train_datagen.flow_from_directory(
     treino_dir,
-    target_size=(150,150),
+    target_size=(224,224),
     batch_size=16,
     class_mode='categorical'
 )
 
+# Dataset validação
 validation_generator = val_datagen.flow_from_directory(
     validacao_dir,
-    target_size=(150,150),
+    target_size=(224,224),
     batch_size=16,
     class_mode='categorical'
 )
 
-# Construção do modelo CNN
+# Base pré-treinada
+base_model = MobileNetV2(
+    weights='imagenet',
+    include_top=False,
+    input_shape=(224,224,3)
+)
+
+# Congelar pesos
+base_model.trainable = False
+
+# Modelo final
 model = Sequential([
-    Conv2D(32, (3,3), activation='relu', input_shape=(150,150,3)),
-    MaxPooling2D(2,2),
-    
-    Conv2D(64, (3,3), activation='relu'),
-    MaxPooling2D(2,2),
-    
-    Conv2D(128, (3,3), activation='relu'),
-    MaxPooling2D(2,2),
-    
-    Flatten(),
+    base_model,
+
+    GlobalAveragePooling2D(),
+
     Dense(128, activation='relu'),
-    Dropout(0.5),  # Dropout para evitar overfitting
-    Dense(4, activation='softmax')  # 4 classes de estágio
+
+    Dropout(0.5),
+
+    Dense(4, activation='softmax')
 ])
 
-# Compilando o modelo
+# Compilar
 model.compile(
-    optimizer='adam',
+    optimizer=Adam(learning_rate=0.0001),
     loss='categorical_crossentropy',
     metrics=['accuracy']
 )
 
 # Callbacks
 early_stop = EarlyStopping(
-    monitor='val_accuracy', 
-    patience=5,  # Para caso não melhore mais
+    monitor='val_accuracy',
+    patience=5,
     restore_best_weights=True
 )
 
 checkpoint = ModelCheckpoint(
-    'modelo_lesao.keras', 
+    'modelo_lesao_lpp.h5',
     monitor='val_accuracy',
     save_best_only=True
 )
@@ -79,9 +87,9 @@ checkpoint = ModelCheckpoint(
 # Treinamento
 history = model.fit(
     train_generator,
-    epochs=30,  # Mais epochs, EarlyStopping interrompe se não melhorar
+    epochs=30,
     validation_data=validation_generator,
     callbacks=[early_stop, checkpoint]
 )
 
-print("Treinamento finalizado e modelo salvo em 'modelo_lesao.keras'!")
+print("Modelo treinado com sucesso!")

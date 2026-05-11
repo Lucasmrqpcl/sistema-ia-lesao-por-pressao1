@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>IA para Lesões por Pressão</title>
+
+<style>
+
+body{
+    background:#121212;
+    color:white;
+    font-family:Arial;
+    text-align:center;
+    padding:20px;
+}
+
+video, canvas{
+    width:500px;
+    border-radius:15px;
+    margin-top:20px;
+    border:3px solid #00b894;
+}
+
+button{
+    padding:15px 30px;
+    border:none;
+    border-radius:10px;
+    background:#00b894;
+    color:white;
+    font-size:18px;
+    cursor:pointer;
+    margin-top:20px;
+}
+
+button:hover{
+    background:#00d1a0;
+}
+
+#perguntas{
+    margin-top:30px;
+}
+
+.pergunta{
+    display:none;
+}
+
+.opcoes button{
+    margin:10px;
+}
+
+#resultado{
+    margin-top:30px;
+    font-size:28px;
+    color:#00ffae;
+}
+
+h2{
+    margin-top:30px;
+}
+
+</style>
+</head>
+<body>
+
+<h1>IA para Identificação de Lesões por Pressão</h1>
+
+<video id="video" autoplay playsinline></video>
+
+<br>
+
+<button id="botaoFoto" onclick="tirarFoto()">
+    Tirar Foto
+</button>
+
+<br>
+
+<canvas id="canvas" style="display:none;"></canvas>
+
+<div id="perguntas" style="display:none;">
+
+    <!-- 1 -->
+    <div class="pergunta" id="p0">
+        <h2>A pele está apenas vermelha e sem abertura?</h2>
+
+        <div class="opcoes">
+            <button onclick="responder('sim')">Sim</button>
+            <button onclick="responder('nao')">Não</button>
+        </div>
+    </div>
+
+    <!-- 2 -->
+    <div class="pergunta" id="p1">
+        <h2>Existe bolha, ferida rasa ou perda superficial da pele?</h2>
+
+        <div class="opcoes">
+            <button onclick="responder('sim')">Sim</button>
+            <button onclick="responder('nao')">Não</button>
+        </div>
+    </div>
+
+    <!-- 3 -->
+    <div class="pergunta" id="p2">
+        <h2>É possível visualizar gordura, tecido amarelo ou cavidade profunda?</h2>
+
+        <div class="opcoes">
+            <button onclick="responder('sim')">Sim</button>
+            <button onclick="responder('nao')">Não</button>
+        </div>
+    </div>
+
+    <!-- 4 -->
+    <div class="pergunta" id="p3">
+        <h2>É possível visualizar músculo, osso ou tendão?</h2>
+
+        <div class="opcoes">
+            <button onclick="responder('sim')">Sim</button>
+            <button onclick="responder('nao')">Não</button>
+        </div>
+    </div>
+
+    <!-- 5 -->
+    <div class="pergunta" id="p4">
+        <h2>Existe necrose preta, escurecimento intenso ou tecido morto?</h2>
+
+        <div class="opcoes">
+            <button onclick="responder('sim')">Sim</button>
+            <button onclick="responder('nao')">Não</button>
+        </div>
+    </div>
+
+</div>
+
+<div id="resultado"></div>
+
+<script>
+
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+
+let respostas = [];
+let perguntaAtual = 0;
+
+// WEBCAM
+navigator.mediaDevices.getUserMedia({
+    video:true
+})
+.then(stream => {
+
+    video.srcObject = stream;
+
+})
+.catch(err => {
+
+    alert("Erro ao acessar webcam.");
+
+});
+
+// FOTO
+function tirarFoto(){
+
+    const context = canvas.getContext('2d');
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    context.drawImage(video,0,0);
+
+    // esconder webcam
+    video.style.display = 'none';
+
+    // mostrar foto congelada
+    canvas.style.display = 'block';
+
+    // esconder botão
+    document.getElementById('botaoFoto').style.display = 'none';
+
+    // mostrar perguntas
+    document.getElementById('perguntas').style.display = 'block';
+
+    mostrarPergunta();
+}
+
+// PERGUNTAS
+function mostrarPergunta(){
+
+    let perguntas = document.querySelectorAll('.pergunta');
+
+    perguntas.forEach(p => p.style.display = 'none');
+
+    if(perguntaAtual < perguntas.length){
+
+        perguntas[perguntaAtual].style.display = 'block';
+
+    }else{
+
+        enviarAnalise();
+
+    }
+}
+
+// RESPOSTA
+function responder(resposta){
+
+    respostas.push(resposta);
+
+    perguntaAtual++;
+
+    mostrarPergunta();
+}
+
+// ENVIAR
+function enviarAnalise(){
+
+    fetch('/analisar',{
+
+        method:'POST',
+
+        headers:{
+            'Content-Type':'application/json'
+        },
+
+        body:JSON.stringify({
+
+            imagem: canvas.toDataURL('image/png'),
+
+            respostas: respostas
+
+        })
+
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        document.getElementById('perguntas').style.display = 'none';
+
+        document.getElementById('resultado').innerHTML = `
+        
+        <h2>Resultado da Análise</h2>
+
+        <p>${data.resultado}</p>
+
+        <button onclick="novaAnalise()">
+            Tirar Outra Foto
+        </button>
+
+        `;
+
+    })
+    .catch(err => {
+
+        alert("Erro ao analisar imagem.");
+
+    });
+
+}
+
+// NOVA FOTO
+function novaAnalise(){
+
+    respostas = [];
+
+    perguntaAtual = 0;
+
+    document.getElementById('resultado').innerHTML = '';
+
+    canvas.style.display = 'none';
+
+    video.style.display = 'block';
+
+    document.getElementById('botaoFoto').style.display = 'inline-block';
+
+}
+
+</script>
+
+</body>
+</html>
