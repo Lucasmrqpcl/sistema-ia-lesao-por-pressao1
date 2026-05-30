@@ -23,7 +23,7 @@ body{
 }
 
 .container{
-    max-width:900px;
+    max-width:950px;
     margin:auto;
 }
 
@@ -40,7 +40,7 @@ h1{
 
 video, canvas{
     width:100%;
-    max-width:500px;
+    max-width:550px;
     border-radius:15px;
     margin-top:20px;
     border:2px solid #22c55e;
@@ -60,8 +60,8 @@ button{
 }
 
 button:hover{
-    transform:scale(1.03);
     background:#16a34a;
+    transform:scale(1.03);
 }
 
 #perguntas{
@@ -89,25 +89,30 @@ button:hover{
     background:#1e293b;
     padding:30px;
     border-radius:15px;
-    box-shadow:0 0 15px rgba(0,0,0,0.3);
-}
-
-.resultado-box hr{
-    margin:25px 0;
-    border:1px solid #334155;
 }
 
 .resultado-final{
-    color:#22c55e;
     font-size:42px;
+    color:#22c55e;
     font-weight:bold;
     margin-top:20px;
 }
 
-.resultado-descricao{
+.info{
     margin-top:20px;
-    font-size:18px;
     color:#cbd5e1;
+    font-size:18px;
+}
+
+.status{
+    margin-top:15px;
+    font-size:20px;
+    color:#facc15;
+}
+
+hr{
+    border:1px solid #334155;
+    margin:25px 0;
 }
 
 </style>
@@ -121,7 +126,7 @@ button:hover{
     <h1>IA para Identificação de Lesões por Pressão</h1>
 
     <p class="subtitulo">
-        Sistema híbrido de apoio à decisão clínica utilizando Inteligência Artificial e triagem guiada.
+        Sistema híbrido de apoio à decisão clínica utilizando Inteligência Artificial e triagem assistida.
     </p>
 
     <video id="video" autoplay playsinline></video>
@@ -140,16 +145,16 @@ button:hover{
         <div class="pergunta" id="p0">
 
             <h2>
-                A pele apresenta apenas vermelhidão, sem abertura?
+                É possível visualizar músculo, osso ou tendão?
             </h2>
 
             <div class="opcoes">
 
-                <button onclick="responder('sim')">
+                <button onclick="responder('Estágio 4')">
                     Sim
                 </button>
 
-                <button onclick="responder('nao')">
+                <button onclick="proximaPergunta()">
                     Não
                 </button>
 
@@ -161,16 +166,16 @@ button:hover{
         <div class="pergunta" id="p1">
 
             <h2>
-                Existe perda superficial da pele ou bolha?
+                Existe tecido amarelado/gorduroso visível ou cavidade profunda?
             </h2>
 
             <div class="opcoes">
 
-                <button onclick="responder('sim')">
+                <button onclick="responder('Estágio 3')">
                     Sim
                 </button>
 
-                <button onclick="responder('nao')">
+                <button onclick="proximaPergunta()">
                     Não
                 </button>
 
@@ -182,16 +187,16 @@ button:hover{
         <div class="pergunta" id="p2">
 
             <h2>
-                Existe tecido gorduroso visível ou cavidade profunda?
+                Existe bolha, abrasão ou perda parcial/superficial da pele?
             </h2>
 
             <div class="opcoes">
 
-                <button onclick="responder('sim')">
+                <button onclick="responder('Estágio 2')">
                     Sim
                 </button>
 
-                <button onclick="responder('nao')">
+                <button onclick="proximaPergunta()">
                     Não
                 </button>
 
@@ -203,37 +208,16 @@ button:hover{
         <div class="pergunta" id="p3">
 
             <h2>
-                É possível visualizar músculo, osso ou tendão?
+                Existe apenas vermelhidão persistente sem rompimento da pele?
             </h2>
 
             <div class="opcoes">
 
-                <button onclick="responder('sim')">
+                <button onclick="responder('Estágio 1')">
                     Sim
                 </button>
 
-                <button onclick="responder('nao')">
-                    Não
-                </button>
-
-            </div>
-
-        </div>
-
-        <!-- PERGUNTA 5 -->
-        <div class="pergunta" id="p4">
-
-            <h2>
-                Existe necrose, tecido escuro ou tecido morto?
-            </h2>
-
-            <div class="opcoes">
-
-                <button onclick="responder('sim')">
-                    Sim
-                </button>
-
-                <button onclick="responder('nao')">
+                <button onclick="proximaPergunta()">
                     Não
                 </button>
 
@@ -253,9 +237,9 @@ const video = document.getElementById('video');
 
 const canvas = document.getElementById('canvas');
 
-let respostas = [];
-
 let perguntaAtual = 0;
+
+let resultadoTriagem = null;
 
 // WEBCAM
 navigator.mediaDevices.getUserMedia({
@@ -288,7 +272,7 @@ function tirarFoto(){
     // esconder webcam
     video.style.display = 'none';
 
-    // mostrar foto
+    // mostrar canvas
     canvas.style.display = 'block';
 
     // esconder botão
@@ -320,14 +304,21 @@ function mostrarPergunta(){
 
 }
 
-// RESPONDER
-function responder(resposta){
-
-    respostas.push(resposta);
+// PRÓXIMA PERGUNTA
+function proximaPergunta(){
 
     perguntaAtual++;
 
     mostrarPergunta();
+
+}
+
+// RESPONDER
+function responder(estagio){
+
+    resultadoTriagem = estagio;
+
+    enviarAnalise();
 
 }
 
@@ -346,7 +337,7 @@ function enviarAnalise(){
 
             imagem: canvas.toDataURL('image/png'),
 
-            respostas: respostas
+            triagem: resultadoTriagem
 
         })
 
@@ -372,9 +363,16 @@ function enviarAnalise(){
 
             </div>
 
-            <div class="resultado-descricao">
+            <div class="status">
 
-                Resultado obtido através de análise híbrida
+                Compatibilidade Clínica:
+                ${data.compatibilidade}
+
+            </div>
+
+            <div class="info">
+
+                Resultado obtido através da combinação
                 entre Inteligência Artificial e triagem clínica.
 
             </div>
@@ -399,12 +397,12 @@ function enviarAnalise(){
 
 }
 
-// NOVA ANÁLISE
+// RESET
 function novaAnalise(){
 
-    respostas = [];
-
     perguntaAtual = 0;
+
+    resultadoTriagem = null;
 
     document.getElementById('resultado').innerHTML = '';
 

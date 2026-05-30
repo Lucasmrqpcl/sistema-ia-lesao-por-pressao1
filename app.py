@@ -18,6 +18,7 @@ app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
 
 if not os.path.exists(UPLOAD_FOLDER):
+
     os.makedirs(UPLOAD_FOLDER)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -49,7 +50,7 @@ def analisar():
 
         imagem_base64 = dados['imagem']
 
-        respostas = dados['respostas']
+        resultado_triagem = dados['triagem']
 
         # REMOVER HEADER BASE64
         imagem_base64 = imagem_base64.split(',')[1]
@@ -65,7 +66,6 @@ def analisar():
             'captura.png'
         )
 
-        # SALVAR
         imagem.save(caminho)
 
         # PREPARAR IMAGEM
@@ -83,64 +83,56 @@ def analisar():
 
         img_array = img_array / 255.0
 
-        # PREVISÃO IA
-        previsao = modelo.predict(img_array)
+        # IA
+        previsao = modelo.predict(img_array)[0]
 
-        probabilidades = previsao[0]
+        indice = np.argmax(previsao)
 
-        # PONTUAÇÃO IA
-        pontuacao_final = {
+        resultado_ia = classes[indice]
 
-            'Estágio 1': float(probabilidades[0]),
-
-            'Estágio 2': float(probabilidades[1]),
-
-            'Estágio 3': float(probabilidades[2]),
-
-            'Estágio 4': float(probabilidades[3])
-
-        }
+        maior_probabilidade = float(np.max(previsao))
 
         # =========================
-        # TRIAGEM CLÍNICA
-        # =========================
-
-        # Vermelhidão
-        if respostas[0] == 'sim':
-
-            pontuacao_final['Estágio 1'] += 0.30
-
-        # Superficial
-        if respostas[1] == 'sim':
-
-            pontuacao_final['Estágio 2'] += 0.35
-
-        # Gordura/cavidade
-        if respostas[2] == 'sim':
-
-            pontuacao_final['Estágio 3'] += 0.45
-
-        # Músculo/osso/tendão
-        if respostas[3] == 'sim':
-
-            pontuacao_final['Estágio 4'] += 0.55
-
-        # Necrose
-        if respostas[4] == 'sim':
-
-            pontuacao_final['Estágio 3'] += 0.20
-            pontuacao_final['Estágio 4'] += 0.20
-
         # RESULTADO FINAL
-        resultado = max(
-            pontuacao_final,
-            key=pontuacao_final.get
-        )
+        # =========================
+
+        # TRIAGEM TEM PRIORIDADE
+        if resultado_triagem is not None:
+
+            resultado_final = resultado_triagem
+
+            # verificar compatibilidade
+            if resultado_triagem == resultado_ia:
+
+                compatibilidade = 'Alta'
+
+            else:
+
+                compatibilidade = 'Moderada'
+
+        else:
+
+            resultado_final = resultado_ia
+
+            # confiança IA
+            if maior_probabilidade >= 0.80:
+
+                compatibilidade = 'Alta'
+
+            elif maior_probabilidade >= 0.60:
+
+                compatibilidade = 'Moderada'
+
+            else:
+
+                compatibilidade = 'Baixa'
 
         # RETORNO
         return jsonify({
 
-            'resultado': f'Lesão por Pressão - {resultado}'
+            'resultado': f'Lesão por Pressão - {resultado_final}',
+
+            'compatibilidade': compatibilidade
 
         })
 
@@ -148,7 +140,9 @@ def analisar():
 
         return jsonify({
 
-            'resultado': f'Erro: {str(erro)}'
+            'resultado': f'Erro: {str(erro)}',
+
+            'compatibilidade': 'Erro'
 
         })
 
